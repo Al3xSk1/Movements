@@ -3,7 +3,6 @@ version: '1.0.0'
 main: info.kovalski.movements.Movements
 api-version: '1.20'
 author: Alex
-softdepend: [PlaceholderAPI]
 commands:
   levels:
     description: Displays or resets the player's level progress.

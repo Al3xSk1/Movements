@@ -1,7 +1,6 @@
 package info.kovalski.movements;
 
 import info.kovalski.movements.listener.*;
-import info.kovalski.movements.placeholders.MovementsPlaceholders;
 import info.kovalski.movements.utils.PlayerDataManager;
 import info.kovalski.movements.utils.StaminaUtil;
 import org.bukkit.Bukkit;
@@ -42,13 +41,6 @@ public final class Movements extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new JumpPadListener(), this);
         getServer().getPluginManager().registerEvents(new QuitListener(), this);
         getServer().getPluginManager().registerEvents(new CombatListener(), this);
-
-
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new MovementsPlaceholders();  // Register the placeholder
-        } else {
-            getLogger().warning("PlaceholderAPI not found, skillchainxp placeholder will not work!");
-        }
 
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {

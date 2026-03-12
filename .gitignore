@@ -1,0 +1,30 @@
+# IntelliJ project files
+.idea/
+*.iml
+*.iws
+
+# Build output
+/out/
+target/
+build/
+
+# Gradle/Maven wrappers
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+**/gradle-wrapper.properties
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+logs/
+*.log
+*.tmp
+
+# Java-specific
+*.class
+
+# Local config
+*.env
+*.local

@@ -1,0 +1,19 @@
+name: Movements
+version: '1.0.0'
+main: info.kovalski.movements.Movements
+api-version: '1.20'
+author: Alex
+softdepend: [PlaceholderAPI]
+commands:
+  levels:
+    description: Displays or resets the player's level progress.
+    usage: /<command> [reset <player>]
+    permission: levels.view
+    permission-message: You do not have permission to view level information.
+permissions:
+  levels.view:
+    description: Allows players to view their skill progress
+    default: true
+  levels.reset:
+    description: Allows admins to reset another player's skill progress
+    default: op

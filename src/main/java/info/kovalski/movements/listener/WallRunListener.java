@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 
 public class WallRunListener implements Listener {
@@ -20,6 +21,8 @@ public class WallRunListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent e) {
+        if (!e.hasChangedPosition()) return;
+
         Player p = e.getPlayer();
         if (!canStartWallRun(p)) return;
 
@@ -69,5 +72,10 @@ public class WallRunListener implements Listener {
             }
         }
         return false;
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        wallRunCooldown.clearCooldown(event.getPlayer().getUniqueId());
     }
 }

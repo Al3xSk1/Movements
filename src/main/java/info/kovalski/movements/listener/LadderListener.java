@@ -1,12 +1,16 @@
 package info.kovalski.movements.listener;
 
 import info.kovalski.movements.utils.PlayerUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.util.Vector;
 
@@ -20,21 +24,30 @@ public class LadderListener implements Listener {
 
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
+        if (!event.hasChangedBlock()) return;
+
         Player player = event.getPlayer();
         UUID id = player.getUniqueId();
 
-        if (!PlayerUtil.isMovementAllowed(player)) return;
+        if (!PlayerUtil.isMovementAllowed(player)) {
+            release(player);
+            return;
+        }
 
         boolean touchingLadder = false;
+        Location location = player.getLocation();
+        World world = location.getWorld();
+        int blockX = location.getBlockX();
+        int blockY = location.getBlockY();
+        int blockZ = location.getBlockZ();
 
         // Check if the player is touching the ladder (using RED_WOOL as ladder placeholder)
         for (int y = 0; y <= 1; y++) {
-            Location loc = player.getLocation().clone().add(0, y, 0);
             for (int x = -1; x <= 1; x++) {
                 for (int z = -1; z <= 1; z++) {
                     if (Math.abs(x) + Math.abs(z) != 1) continue;
 
-                    Block block = loc.clone().add(x, 0, z).getBlock();
+                    Block block = world.getBlockAt(blockX + x, blockY + y, blockZ + z);
                     if (block.getType() == Material.RED_WOOL) {
                         touchingLadder = true;
                         break;
@@ -49,7 +62,7 @@ public class LadderListener implements Listener {
         if (touchingLadder) {
             if (!climbing.contains(id)) {
                 climbing.add(id);
-                player.sendActionBar("§6[Climbing]");  // Show action bar indicating climbing
+                player.sendActionBar(Component.text("[Climbing]", NamedTextColor.GOLD));
             }
 
             player.setGravity(false);
@@ -79,5 +92,19 @@ public class LadderListener implements Listener {
         if (climbing.remove(id)) {
             player.setGravity(true);  // Stop skill chain when sneaking off the ladder
         }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        release(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        release(event.getEntity());
+    }
+
+    private void release(Player player) {
+        if (climbing.remove(player.getUniqueId())) player.setGravity(true);
     }
 }

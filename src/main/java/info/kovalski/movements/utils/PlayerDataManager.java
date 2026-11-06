@@ -1,14 +1,19 @@
 package info.kovalski.movements.utils;
 
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
+import java.util.logging.Level;
 
-public class PlayerDataManager {
+public final class PlayerDataManager {
+
+    private static final int DEFAULT_LEVEL = 1;
+    private static final double DEFAULT_MAX_STAMINA = 100.0;
 
     private final JavaPlugin plugin;
     private final File dataFolder;
@@ -16,81 +21,60 @@ public class PlayerDataManager {
     public PlayerDataManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.dataFolder = plugin.getDataFolder();
-        if (!dataFolder.exists()) {
-            dataFolder.mkdirs();
-        }
     }
 
     public void loadPlayerData(Player player) {
         UUID playerId = player.getUniqueId();
-        File playerFile = new File(dataFolder, playerId + ".yml");
+        File playerFile = getPlayerFile(playerId);
+        YamlConfiguration data = YamlConfiguration.loadConfiguration(playerFile);
 
-        if (!playerFile.exists()) {
-            createNewPlayerData(player);
-        } else {
-            FileConfiguration data = plugin.getConfig();
-            // Load player level and XP data
-            int level = data.getInt(playerId + ".level", 1);
-            int xp = data.getInt(playerId + ".xp", 0);
-            double maxStamina = data.getDouble(playerId + ".maxStamina", 100);
+        // Migrate UUID-prefixed values written by older versions into the player file.
+        FileConfiguration legacyData = plugin.getConfig();
+        String legacyPath = playerId + ".";
+        int level = data.getInt("level", data.getInt(legacyPath + "level",
+                legacyData.getInt(legacyPath + "level", DEFAULT_LEVEL)));
+        double xpProgress = data.getDouble("xp", data.getDouble(legacyPath + "xp",
+                legacyData.getDouble(legacyPath + "xp", 0.0)));
+        double maxStamina = data.getDouble("maxStamina", data.getDouble(legacyPath + "maxStamina",
+                legacyData.getDouble(legacyPath + "maxStamina", DEFAULT_MAX_STAMINA)));
+        double stamina = data.getDouble("stamina", maxStamina);
 
-            // Set player's level, XP, and max stamina
-            player.setLevel(level);
-            player.setExp(xp / (float) getXPRequiredForNextLevel(level)); // Adjust player's XP bar
-            StaminaUtil.setMaxStamina(player, maxStamina);
+        player.setLevel(Math.max(0, level));
+        player.setExp((float) clamp(xpProgress, 0.0, 1.0));
+        StaminaUtil.setMaxStamina(player, maxStamina);
+        StaminaUtil.setStamina(player, stamina);
 
-            // Load rewards and other data if needed
+        if (!playerFile.isFile() || !data.contains("maxStamina")) {
+            savePlayerData(player);
         }
     }
 
     public void savePlayerData(Player player) {
-        UUID playerId = player.getUniqueId();
-        File playerFile = new File(dataFolder, playerId + ".yml");
-        FileConfiguration data = plugin.getConfig();
+        if (!dataFolder.exists() && !dataFolder.mkdirs()) {
+            plugin.getLogger().severe("Could not create player data directory: " + dataFolder);
+            return;
+        }
 
-        // Save player level, XP, and max stamina
-        data.set(playerId + ".level", player.getLevel());
-        data.set(playerId + ".xp", (int) player.getExp()); // store the XP as an int
-        data.set(playerId + ".maxStamina", StaminaUtil.getMaxStamina(player));
-
-        // Apply rewards logic if needed
-        applyLevelRewards(player);
+        File playerFile = getPlayerFile(player.getUniqueId());
+        YamlConfiguration data = YamlConfiguration.loadConfiguration(playerFile);
+        data.set(player.getUniqueId().toString(), null);
+        data.set("level", player.getLevel());
+        data.set("xp", player.getExp());
+        data.set("maxStamina", StaminaUtil.getMaxStamina(player));
+        data.set("stamina", StaminaUtil.getStamina(player));
 
         try {
             data.save(playerFile);
         } catch (IOException e) {
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Could not save player data for " + player.getName(), e);
         }
     }
 
-    private void createNewPlayerData(Player player) {
-        UUID playerId = player.getUniqueId();
-        File playerFile = new File(dataFolder, playerId + ".yml");
-        FileConfiguration data = plugin.getConfig();
-
-        // Default values for new player
-        data.set(playerId + ".level", 1);
-        data.set(playerId + ".xp", 0);
-        data.set(playerId + ".maxStamina", 100); // Default max stamina
-
-        try {
-            data.save(playerFile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private File getPlayerFile(UUID playerId) {
+        return new File(dataFolder, playerId + ".yml");
     }
 
-    private void applyLevelRewards(Player player) {
-        // Add specific rewards logic based on player level
-        int level = player.getLevel();
-        if (level == 5) {
-            // Apply reward for reaching level 5 (example: new ability unlocked)
-            player.sendMessage("§aCongratulations! You unlocked a new ability at level 5!");
-        }
-        // Add more levels and their respective rewards here
-    }
-
-    private int getXPRequiredForNextLevel(int level) {
-        return (int) (100 * Math.pow(1.2, level - 1)); // Example XP scaling
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

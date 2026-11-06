@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 
 import java.util.UUID;
@@ -20,14 +21,16 @@ public class JumpPadListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
+        if (!event.hasChangedBlock()) return;
+
         Player player = event.getPlayer();
         UUID id = player.getUniqueId();
 
         if (!player.isOnGround()) return;
-        if (event.getFrom().getBlock().equals(event.getTo().getBlock())) return;
 
         Location loc = player.getLocation();
-        Material blockBelow = loc.clone().subtract(0, 1, 0).getBlock().getType();
+        Material blockBelow = loc.getWorld().getBlockAt(
+                loc.getBlockX(), loc.getBlockY() - 1, loc.getBlockZ()).getType();
 
         if (blockBelow != Material.REDSTONE_BLOCK) return;
         if (cooldowns.isOnCooldown(id)) return;
@@ -43,5 +46,10 @@ public class JumpPadListener implements Listener {
 
         // Set cooldown
         cooldowns.setCooldown(id, COOLDOWN_MS);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        cooldowns.clearCooldown(event.getPlayer().getUniqueId());
     }
 }

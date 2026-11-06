@@ -8,9 +8,16 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
 public class CombatListener implements Listener {
+
+    private final Plugin plugin;
+
+    public CombatListener(Plugin plugin) {
+        this.plugin = plugin;
+    }
 
     @EventHandler
     public void onEntityHit(EntityDamageByEntityEvent event) {
@@ -18,7 +25,7 @@ public class CombatListener implements Listener {
         if (!(event.getEntity() instanceof LivingEntity victim)) return;
 
         double currentMomentum = MomentumUtil.get(attacker);
-        double maxMomentum = MomentumUtil.getMAX_MOMENTUM();
+        double maxMomentum = MomentumUtil.getMaxMomentum();
 
         if (currentMomentum < maxMomentum * 0.25) return;
 
@@ -29,8 +36,8 @@ public class CombatListener implements Listener {
         Vector direction = attacker.getLocation().getDirection().normalize();
         Vector knockback = direction.multiply(knockbackStrength).setY(0.25);
 
-        Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("Movements"), () -> {
-            victim.setVelocity(knockback);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (victim.isValid()) victim.setVelocity(knockback);
         }, 1L);
 
         // Reset attacker momentum

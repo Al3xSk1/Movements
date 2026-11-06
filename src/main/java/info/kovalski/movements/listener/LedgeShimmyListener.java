@@ -1,14 +1,18 @@
 package info.kovalski.movements.listener;
 
 import info.kovalski.movements.utils.PlayerUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 
 import java.util.HashSet;
@@ -21,19 +25,28 @@ public class LedgeShimmyListener implements Listener {
 
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
+        if (!event.hasChangedBlock()) return;
+
         Player player = event.getPlayer();
         UUID id = player.getUniqueId();
 
-        if (!PlayerUtil.isMovementAllowed(player)) return;
+        if (!PlayerUtil.isMovementAllowed(player)) {
+            release(player);
+            return;
+        }
 
         Location loc = player.getLocation();
+        World world = loc.getWorld();
+        int blockX = loc.getBlockX();
+        int blockY = loc.getBlockY();
+        int blockZ = loc.getBlockZ();
         boolean foundLedge = false;
 
         // Check for a ledge (a red concrete block)
         for (int yOffset = -1; yOffset <= 0; yOffset++) {
             for (int x = -1; x <= 1; x++) {
                 for (int z = -1; z <= 1; z++) {
-                    Block block = loc.clone().add(x, yOffset, z).getBlock();
+                    Block block = world.getBlockAt(blockX + x, blockY + yOffset, blockZ + z);
                     if (block.getType() == Material.RED_CONCRETE) {
                         foundLedge = true;
                         break;
@@ -48,18 +61,16 @@ public class LedgeShimmyListener implements Listener {
             // Start shimmying if the player is not already shimmying
             if (!shimmying.contains(id)) {
                 shimmying.add(id);
-                player.sendActionBar("§6[Shimmying]");  // Show action bar
+                player.sendActionBar(Component.text("[Shimmying]", NamedTextColor.GOLD));
             }
 
             player.setGravity(false);
             player.setVelocity(player.getVelocity().setY(0));  // Stop vertical movement
             player.setFallDistance(0);
-        } else {
-            // Stop shimmying if the player is no longer near the ledge
-            if (shimmying.remove(id)) {
-                player.setGravity(true); // Let gravity take over if the player leaves the ledge
-                // XP is awarded when the chain ends, not immediately during skill usage.
-            }
+        } else if (shimmying.contains(id)) {
+            // Stop shimmying if the player is no longer near the ledge.
+            release(player);
+            // XP is awarded when the chain ends, not immediately during skill usage.
         }
     }
 
@@ -71,10 +82,7 @@ public class LedgeShimmyListener implements Listener {
         // If the player is shimmying, cancel flight toggle and apply jump effect
         if (shimmying.contains(id)) {
             event.setCancelled(true);  // Cancel flight toggle while shimmying
-            shimmying.remove(id);
-
-            player.setGravity(true);
-            player.setAllowFlight(false);
+            release(player);
 
             // Apply a vertical jump boost
             Vector jump = new Vector(0, 0.9, 0);
@@ -92,9 +100,25 @@ public class LedgeShimmyListener implements Listener {
     @EventHandler
     public void onSneak(PlayerToggleSneakEvent event) {
         Player player = event.getPlayer();
-        if (shimmying.remove(player.getUniqueId())) {
-            player.setGravity(true); // Let gravity take over when the player sneaks off the ledge
+        if (shimmying.contains(player.getUniqueId())) {
+            release(player);
             // XP will be awarded after the chain ends, not here.
         }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        release(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        release(event.getEntity());
+    }
+
+    private void release(Player player) {
+        if (!shimmying.remove(player.getUniqueId())) return;
+        player.setGravity(true);
+        player.setAllowFlight(false);
     }
 }

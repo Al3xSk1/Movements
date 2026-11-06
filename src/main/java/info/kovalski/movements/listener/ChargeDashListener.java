@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.util.Vector;
 
@@ -35,7 +36,7 @@ public class ChargeDashListener implements Listener {
         // Perform Charge Dash when the player is on the ground
         if (player.isOnGround()) {
             if (chargeCooldown.isOnCooldown(id)) return;
-            if (momentum < MomentumUtil.getMAX_MOMENTUM()* 0.8) return;
+            if (momentum < MomentumUtil.getMaxMomentum()* 0.8) return;
             if (!StaminaUtil.consume(player, 10)) return;
 
             Vector chargeVector = player.getLocation().getDirection().setY(0.1).multiply(1.2);
@@ -69,9 +70,18 @@ public class ChargeDashListener implements Listener {
 
     @EventHandler
     public void onLand(PlayerMoveEvent event) {
+        if (!event.hasChangedPosition()) return;
         Player player = event.getPlayer();
         if (player.isOnGround()) {
             dashedThisAir.remove(player.getUniqueId());
         }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        chargeCooldown.clearCooldown(id);
+        dashCooldown.clearCooldown(id);
+        dashedThisAir.remove(id);
     }
 }

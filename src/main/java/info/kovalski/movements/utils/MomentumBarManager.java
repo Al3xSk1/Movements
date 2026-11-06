@@ -18,7 +18,7 @@ public class MomentumBarManager {
     public static void update(Player p) {
         UUID id = p.getUniqueId();
         double momentum = MomentumUtil.get(p);
-        double value = momentum / MomentumUtil.getMAX_MOMENTUM();
+        double value = momentum / MomentumUtil.getMaxMomentum();
         value = Math.max(0.0, Math.min(1.0, value)); // safety clamp
 
         BossBar bar = bars.get(id);
